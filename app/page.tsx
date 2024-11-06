@@ -1,101 +1,195 @@
-import Image from "next/image";
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { motion, useScroll, useTransform, useMotionValue, AnimatePresence } from 'framer-motion'
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [isBurst, setIsBurst] = useState(false)
+  const [isScrolling, setIsScrolling] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const containerRef = useRef(null)
+  const bubbleRef = useRef(null)
+  const { scrollYProgress } = useScroll()
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const bubbleSize = useTransform(scrollYProgress, [0, 0.9], ['16rem', '48rem'])
+  const bubbleScale = useTransform(scrollYProgress, [0, 0.9, 1], [1, 1.2, 0])
+  const bubbleOpacity = useTransform(scrollYProgress, [0, 0.9, 0.95, 1], [0.8, 0.8, 0.4, 0])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    let scrollTimeout
+
+    const handleScroll = () => {
+      setIsScrolling(true)
+      clearTimeout(scrollTimeout)
+
+      const scrollPosition = window.scrollY
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      const maxScroll = documentHeight - windowHeight
+      const scrollPercentage = scrollPosition / maxScroll
+
+      if (scrollPercentage >= 0.95) {
+        setIsBurst(true)
+      } else if (scrollPercentage < 0.9) {
+        setIsBurst(false)
+      }
+
+      scrollTimeout = setTimeout(() => setIsScrolling(false), 100)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      clearTimeout(scrollTimeout)
+    }
+  }, [])
+
+  useEffect(() => {
+    let animationId
+    const floatAnimation = () => {
+      if (!isScrolling && !isBurst) {
+        const time = Date.now() * 0.001
+        const x = Math.sin(time) * 100 // Diagonal movement along X-axis
+        const y = Math.cos(time) * 100 // Diagonal movement along Y-axis
+        mouseX.set(x)
+        mouseY.set(y)
+      } else {
+        mouseX.set(0)
+        mouseY.set(0)
+      }
+      animationId = requestAnimationFrame(floatAnimation)
+    }
+    animationId = requestAnimationFrame(floatAnimation)
+    return () => cancelAnimationFrame(animationId)
+  }, [mouseX, mouseY, isScrolling, isBurst])
+
+  const renderDroplets = () => {
+    return [...Array(20)].map((_, index) => (
+      <motion.div
+        key={index}
+        className="absolute rounded-full bg-blue-300 opacity-80"
+        style={{
+          width: `${Math.random() * 10 + 5}px`,
+          height: `${Math.random() * 10 + 5}px`,
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`
+        }}
+        animate={{ opacity: 0, scale: 1.5 }}
+        transition={{ duration: 1.5, delay: index * 0.1 }}
+      />
+    ))
+  }
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <motion.div
+          className="relative w-48 h-48"
+          animate={{ scale: [0.8, 1.2, 0.8] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          {[0, 1, 2, 3, 4].map((index) => (
+            <motion.div
+              key={index}
+              className="absolute inset-0"
+              style={{
+                border: '2px solid #c5ff00',
+                borderRadius: '50%',
+                width: '100%',
+                height: '100%',
+                transform: `scale(${1 - index * 0.15})`,
+              }}
+              animate={{
+                rotate: 360,
+                scale: [1 - index * 0.15, 1.2 - index * 0.15, 1 - index * 0.15],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: 'linear',
+                delay: index * 0.2,
+              }}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          ))}
+        </motion.div>
+      </div>
+    )
+  }
+
+  // Function to calculate distance between bubble and text
+  const calculateDistance = (x1, y1, x2, y2) => {
+    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
+  }
+
+  return (
+    <div ref={containerRef} className="relative min-h-[400vh]">
+      <AnimatePresence>
+        {!isBurst && (
+          <motion.div
+            ref={bubbleRef}
+            className="fixed top-1/2 left-1/2 pointer-events-none z-50"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{
+              scale: [1, 1.2, 0],
+              opacity: [1, 1, 0],
+              transition: { duration: 0.5 }
+            }}
+            style={{
+              width: bubbleSize,
+              height: bubbleSize,
+              x: mouseX,
+              y: mouseY,
+              scale: bubbleScale,
+              opacity: bubbleOpacity,
+            }}
           >
-            Read our docs
-          </a>
+            <div className="relative w-full h-full">
+              <div 
+                className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 via-white/20 to-transparent backdrop-blur-md border border-white/30" 
+                style={{
+                  background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.05) 100%)'
+                }}
+              />
+              <div 
+                className="absolute inset-0 rounded-full opacity-80"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 100%)'
+                }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isBurst && (
+        <div className="absolute inset-0 overflow-hidden z-50 pointer-events-none">
+          {renderDroplets()}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      )}
+
+      {['Not sorry to interrupt.', "Rouser's activism makes people think.", 'Change only happens when everyone is paying attention.', 'Get noisy as hell, our lives depend on it.'].map((text, index) => (
+        <section
+          key={index}
+          className={`h-screen flex items-center justify-center ${index % 2 === 0 ? 'bg-black' : 'bg-[#e4c1c1]'} p-8`}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <motion.h1
+            className="text-[#c5ff00] text-7xl md:text-8xl font-bold max-w-4xl"
+            style={{
+              scale: calculateDistance(mouseX.get(), mouseY.get(), 0, 0) < 100 ? 1.5 : 1 // Enlarge when bubble is near
+            }}
+          >
+            {text}
+          </motion.h1>
+        </section>
+      ))}
     </div>
-  );
+  )
 }
